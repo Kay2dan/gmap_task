@@ -1,21 +1,82 @@
-import React from "react"
-import { Link } from "gatsby"
+import React, {Component} from "react"
+import GoogleMap from "../components/Map";
+import PopUp from "../components/PopUp";
+import InfoContainer from "../components/InfoContainer";
 
-import Layout from "../components/layout"
-import Image from "../components/image"
-import SEO from "../components/seo"
+class IndexPage extends Component{
 
-const IndexPage = () => (
-  <Layout>
-    <SEO title="Home" keywords={[`gatsby`, `application`, `react`]} />
-    <h1>Hi people</h1>
-    <p>Welcome to your new Gatsby site.</p>
-    <p>Now go build something great.</p>
-    <div style={{ maxWidth: `300px`, marginBottom: `1.45rem` }}>
-      <Image />
-    </div>
-    <Link to="/page-2/">Go to page 2</Link>
-  </Layout>
-)
+	constructor(props){
+		super(props);
+		this.state = {
+			selectedCountry: {},
+			data: {},
+			popUp: false,
+			error: {} // error not handled on screen
+		}
+	}
+
+	componentDidMount() {
+		this.fetchData();
+	}
+
+	async fetchData(){
+		const url = "https://s3-eu-west-1.amazonaws.com/omnifi/techtests/locations.json";
+		try{
+			const resp = await fetch(url);
+			const data = await resp.json();
+			// console.log("data in fetch:", data);
+			this.setState({ data });
+		}
+		catch(err){
+			this.setState({
+				error: err
+			})
+		}
+	}
+
+
+	pinOnClickHandler = (e) => {
+    const {clientX, clientY } = e;
+		const eTarget = e.target;
+    const location = eTarget.getAttribute("data-name");
+    const { data } = this.state;
+		this.setState({
+			selectedCountry : {
+        name: data.filter(obj => obj.name === location)[0].name,
+        position: {
+          clientX,
+          clientY
+        }
+      },
+      popUp: true
+		});
+	}
+
+  closePopup = () => {
+    this.setState({
+      selectedCountry: {},
+      popUp: false
+    })
+  }
+
+	render(){
+		const { popUp, selectedCountry, data } = this.state;
+    console.log("d:", data.length, selectedCountry);
+		return(
+			  <div className="container">
+  			  { data.length ?
+      <GoogleMap pinData = {data} selectedCountry={selectedCountry} onClickHandler={this.pinOnClickHandler}/>
+      : "Loading..." }
+          { popUp &&
+            <PopUp countryData={data.find(node => node.name === selectedCountry.name)}
+              selectedCountry={selectedCountry}
+              onClickHandler={this.closePopup} />
+          }
+          <InfoContainer data={data} selected={selectedCountry.name} />
+    		</div>
+    );
+	}
+
+}
 
 export default IndexPage
